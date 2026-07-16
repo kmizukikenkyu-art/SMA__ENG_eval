@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Speaker Similarity Evaluation (MOS) / 話者類似性評価</title>
+<style>
+  body { font-family: 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; background:#f4f7f6; color:#333; margin:0; padding:40px 20px 120px; }
+  .container { max-width:680px; margin:0 auto; background:#fff; padding:30px; border-radius:8px; box-shadow:0 4px 6px rgba(0,0,0,0.1); }
+  h1 { text-align:center; color:#2c3e50; font-size:22px; margin-bottom:4px; }
+  h1 .sub { display:block; font-size:14px; color:#7f8c8d; font-weight:normal; margin-top:4px; }
+  .nav { text-align:center; margin-bottom:18px; font-size:13px; }
+  .nav a { color:#2980b9; text-decoration:none; margin:0 8px; }
+  .nav .current { font-weight:bold; color:#2c3e50; }
+  .instruction { background:#eef2f5; padding:15px 15px 15px 30px; border-left:4px solid #3498db; margin-bottom:24px; font-size:14px; }
+  .instruction li { margin-bottom:8px; }
+  .instruction .ja { color:#666; font-size:13px; }
+  .instruction a { color:#2980b9; word-break:break-all; }
+
+  .audio-item { background:#fafafa; border:1px solid #e0e0e0; border-radius:6px; padding:20px; margin-bottom:20px; display:flex; flex-direction:column; gap:10px; }
+  .audio-label { font-weight:bold; font-size:16px; color:#2c3e50; }
+
+  .ab-wrap { display:flex; gap:12px; flex-wrap:wrap; }
+  .ab-col { flex:1; min-width:240px; background:#fff; border:1px solid #e6e6e6; border-radius:6px; padding:12px; }
+  .ab-col.ref { background:#fff8e1; border-color:#ffe082; }
+  .ab-tag { font-weight:bold; font-size:13px; margin-bottom:6px; }
+  .ab-col.ref .ab-tag { color:#b7791f; }
+  .ab-col.smp .ab-tag { color:#2c3e50; }
+  .ab-note { font-size:12px; color:#888; margin-top:4px; }
+  audio { width:100%; }
+
+  .eval-group { display:flex; flex-direction:column; gap:5px; margin-top:6px; padding-top:10px; border-top:1px dashed #e0e0e0; }
+  .eval-title { font-size:14px; color:#2c3e50; font-weight:bold; }
+  .radio-options { display:flex; justify-content:space-between; gap:8px; flex-wrap:wrap; }
+  .radio-label { display:flex; align-items:center; gap:4px; font-size:12px; color:#555; cursor:pointer; background:#fff; padding:6px 8px; border-radius:4px; border:1px solid #ddd; flex:1; min-width:96px; justify-content:center; text-align:center; }
+  .radio-label:hover { background:#f0f7ff; border-color:#3498db; }
+  .radio-label.checked { background:#eaf4ff; border-color:#3498db; }
+
+  .memo-wrap { margin-top:4px; }
+  .memo-wrap label { font-size:13px; color:#2c3e50; font-weight:bold; display:block; margin-bottom:4px; }
+  .memo-wrap textarea { width:100%; box-sizing:border-box; min-height:48px; resize:vertical; border:1px solid #ddd; border-radius:4px; padding:8px; font-family:inherit; font-size:13px; }
+
+  .footer-bar { position:fixed; bottom:0; left:0; right:0; background:#fff; border-top:1px solid #e0e0e0; padding:12px; text-align:center; box-shadow:0 -2px 6px rgba(0,0,0,0.06); z-index:20; }
+  #progress { font-size:13px; color:#555; margin-bottom:8px; }
+  #downloadBtn { padding:12px 30px; font-size:16px; background:#2ecc71; color:#fff; border:none; border-radius:5px; cursor:pointer; font-weight:bold; }
+  #downloadBtn:hover { background:#27ae60; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>Speaker Similarity Evaluation (MOS)<span class="sub">話者類似性評価</span></h1>
+  <div class="nav">
+    <a href="clarity.html">&laquo; 1. Clarity / 明瞭性</a> ｜
+    <span class="current">2. Speaker similarity / 話者類似性</span>
+  </div>
+
+  <div class="instruction">
+    <ol>
+      <li>Please use a quiet room and headphones or earphones.
+        <div class="ja">静かな環境で、ヘッドホンやイヤホンをご利用ください。</div></li>
+      <li>Set your volume at the start and do <b>not</b> change it while answering.
+        <div class="ja">はじめに設定した音量は、回答中に変更しないでください。</div></li>
+      <li>For each item, listen to <b>A (reference speaker)</b> and <b>B (sample)</b> and compare them. Rate how similar B is to A <b>as a speaker / voice identity</b> — ignore the difference in wording.
+        <div class="ja">各項目で <b>A（基準話者）</b> と <b>B（サンプル）</b> を聴き比べ、B が A と<b>話者（声の同一性）</b>としてどれだけ似ているかを評価してください。文章の違いは無視してください。</div></li>
+      <li>5 = Very similar, 1 = Not similar at all. Use the memo box for notes (optional).
+        <div class="ja">5:非常に似ている〜1:全く似ていない。気づいた点はメモ欄へ（任意）。</div></li>
+      <li>When finished, download the CSV and upload it to the Google Form:
+        <a href="https://forms.gle/tSxYir6YXfjAXoPu5" target="_blank" rel="noopener">https://forms.gle/tSxYir6YXfjAXoPu5</a>
+        <div class="ja">回答が終わりましたらCSVをダウンロードし、Googleフォームにアップロードしてください。</div></li>
+    </ol>
+  </div>
+
+  <div id="samples"></div>
+</div>
+
+<div class="footer-bar">
+  <div id="progress">Answered / 回答済み: 0 / 20</div>
+  <button id="downloadBtn">Download similarity CSV / 話者類似性CSVをダウンロード</button>
+</div>
+
+<script src="samples.js"></script>
+<script>
+function buildRadioGroup(titleEn, titleJa, name, opts) {
+  const group = document.createElement("div");
+  group.className = "eval-group";
+  const title = document.createElement("div");
+  title.className = "eval-title";
+  title.innerHTML = titleEn + ' <span style="font-weight:normal;color:#888">/ ' + titleJa + '</span>';
+  group.appendChild(title);
+  const row = document.createElement("div");
+  row.className = "radio-options";
+  opts.forEach(o => {
+    const label = document.createElement("label");
+    label.className = "radio-label";
+    const input = document.createElement("input");
+    input.type = "radio"; input.name = name; input.value = o.v;
+    input.addEventListener("change", () => {
+      row.querySelectorAll(".radio-label").forEach(l => l.classList.remove("checked"));
+      label.classList.add("checked");
+      updateProgress();
+    });
+    label.appendChild(input);
+    label.appendChild(document.createTextNode(o.en));
+    row.appendChild(label);
+  });
+  group.appendChild(row);
+  return group;
+}
+
+function makeAudio(src) {
+  const a = document.createElement("audio");
+  a.controls = true; a.src = src; a.setAttribute("controlsList", "nodownload");
+  return a;
+}
+
+const samplesRoot = document.getElementById("samples");
+SAMPLES.forEach((s, idx) => {
+  const no = idx + 1;
+  const item = document.createElement("div");
+  item.className = "audio-item";
+
+  const label = document.createElement("div");
+  label.className = "audio-label";
+  label.textContent = "Sample No." + no + " / 音声サンプル No." + no;
+  item.appendChild(label);
+
+  // A/B comparison block
+  const ab = document.createElement("div");
+  ab.className = "ab-wrap";
+
+  const colA = document.createElement("div");
+  colA.className = "ab-col ref";
+  const tagA = document.createElement("div");
+  tagA.className = "ab-tag";
+  tagA.textContent = "A — Reference speaker / 基準話者";
+  colA.appendChild(tagA);
+  colA.appendChild(makeAudio(REFERENCE_AUDIO));
+  const noteA = document.createElement("div");
+  noteA.className = "ab-note";
+  noteA.textContent = "Same target speaker for all items. / 全項目で共通のターゲット話者。";
+  colA.appendChild(noteA);
+
+  const colB = document.createElement("div");
+  colB.className = "ab-col smp";
+  const tagB = document.createElement("div");
+  tagB.className = "ab-tag";
+  tagB.textContent = "B — Sample / サンプル";
+  colB.appendChild(tagB);
+  colB.appendChild(makeAudio(s.file));
+
+  ab.appendChild(colA);
+  ab.appendChild(colB);
+  item.appendChild(ab);
+
+  item.appendChild(buildRadioGroup("Speaker similarity (B vs A)", "話者類似性（B対A）", "similarity_no" + no, SIMILARITY_OPTS));
+
+  const memoWrap = document.createElement("div");
+  memoWrap.className = "memo-wrap";
+  const memoLabel = document.createElement("label");
+  memoLabel.setAttribute("for", "memo_no" + no);
+  memoLabel.innerHTML = 'Memo <span style="font-weight:normal;color:#888">/ メモ（任意）</span>';
+  const memo = document.createElement("textarea");
+  memo.id = "memo_no" + no; memo.name = "memo_no" + no;
+  memo.placeholder = "e.g. pitch differs, timbre close but breathy... / 例：ピッチが違う、音色は近いが息っぽい など";
+  memoWrap.appendChild(memoLabel);
+  memoWrap.appendChild(memo);
+  item.appendChild(memoWrap);
+
+  samplesRoot.appendChild(item);
+});
+
+function updateProgress() {
+  let answered = 0;
+  for (let i = 1; i <= SAMPLES.length; i++) {
+    if (document.querySelector('input[name="similarity_no' + i + '"]:checked')) answered++;
+  }
+  document.getElementById("progress").textContent =
+    "Answered / 回答済み: " + answered + " / " + SAMPLES.length;
+}
+
+document.getElementById("downloadBtn").addEventListener("click", function () {
+  let missing = 0;
+  for (let i = 1; i <= SAMPLES.length; i++) {
+    if (!document.querySelector('input[name="similarity_no' + i + '"]:checked')) missing++;
+  }
+  if (missing > 0) {
+    const proceed = confirm(
+      "There are " + missing + " unanswered item(s). Download anyway?\n" +
+      "未回答が " + missing + " 件あります。このままダウンロードしますか？"
+    );
+    if (!proceed) return;
+  }
+
+  let csv = ["No", "type", "file", "reference", "similarity", "memo"].map(csvField).join(",") + "\n";
+  for (let i = 1; i <= SAMPLES.length; i++) {
+    const s = SAMPLES[i - 1];
+    const similarity = document.querySelector('input[name="similarity_no' + i + '"]:checked');
+    const memo = document.getElementById("memo_no" + i).value;
+    csv += [
+      "No." + i, s.type, s.file, REFERENCE_AUDIO, similarity ? similarity.value : "NA", memo
+    ].map(csvField).join(",") + "\n";
+  }
+  downloadCsv("mos_similarity_results.csv", csv);
+});
+
+updateProgress();
+</script>
+</body>
+</html>

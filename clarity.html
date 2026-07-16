@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Clarity Evaluation (MOS) / 明瞭性評価</title>
+<style>
+  body { font-family: 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; background:#f4f7f6; color:#333; margin:0; padding:40px 20px 120px; }
+  .container { max-width:680px; margin:0 auto; background:#fff; padding:30px; border-radius:8px; box-shadow:0 4px 6px rgba(0,0,0,0.1); }
+  h1 { text-align:center; color:#2c3e50; font-size:22px; margin-bottom:4px; }
+  h1 .sub { display:block; font-size:14px; color:#7f8c8d; font-weight:normal; margin-top:4px; }
+  .nav { text-align:center; margin-bottom:18px; font-size:13px; }
+  .nav a { color:#2980b9; text-decoration:none; margin:0 8px; }
+  .nav .current { font-weight:bold; color:#2c3e50; }
+  .instruction { background:#eef2f5; padding:15px 15px 15px 30px; border-left:4px solid #3498db; margin-bottom:24px; font-size:14px; }
+  .instruction li { margin-bottom:8px; }
+  .instruction .ja { color:#666; font-size:13px; }
+  .instruction a { color:#2980b9; word-break:break-all; }
+  .audio-item { background:#fafafa; border:1px solid #e0e0e0; border-radius:6px; padding:20px; margin-bottom:20px; display:flex; flex-direction:column; gap:10px; }
+  .audio-label { font-weight:bold; font-size:16px; color:#2c3e50; }
+  .sample-text { font-size:14px; color:#444; font-style:italic; margin:2px 0 4px; }
+  audio { width:100%; }
+  .eval-group { display:flex; flex-direction:column; gap:5px; margin-top:6px; padding-top:10px; border-top:1px dashed #e0e0e0; }
+  .eval-title { font-size:14px; color:#2c3e50; font-weight:bold; }
+  .radio-options { display:flex; justify-content:space-between; gap:8px; flex-wrap:wrap; }
+  .radio-label { display:flex; align-items:center; gap:4px; font-size:12px; color:#555; cursor:pointer; background:#fff; padding:6px 8px; border-radius:4px; border:1px solid #ddd; flex:1; min-width:92px; justify-content:center; text-align:center; }
+  .radio-label:hover { background:#f0f7ff; border-color:#3498db; }
+  .radio-label.checked { background:#eaf4ff; border-color:#3498db; }
+  .memo-wrap { margin-top:4px; }
+  .memo-wrap label { font-size:13px; color:#2c3e50; font-weight:bold; display:block; margin-bottom:4px; }
+  .memo-wrap textarea { width:100%; box-sizing:border-box; min-height:48px; resize:vertical; border:1px solid #ddd; border-radius:4px; padding:8px; font-family:inherit; font-size:13px; }
+  .footer-bar { position:fixed; bottom:0; left:0; right:0; background:#fff; border-top:1px solid #e0e0e0; padding:12px; text-align:center; box-shadow:0 -2px 6px rgba(0,0,0,0.06); z-index:20; }
+  #progress { font-size:13px; color:#555; margin-bottom:8px; }
+  #downloadBtn { padding:12px 30px; font-size:16px; background:#2ecc71; color:#fff; border:none; border-radius:5px; cursor:pointer; font-weight:bold; }
+  #downloadBtn:hover { background:#27ae60; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>Clarity Evaluation (MOS)<span class="sub">明瞭性評価</span></h1>
+  <div class="nav">
+    <span class="current">1. Clarity / 明瞭性</span> ｜
+    <a href="similarity.html">2. Speaker similarity / 話者類似性 &raquo;</a>
+  </div>
+
+  <div class="instruction">
+    <ol>
+      <li>Please use a quiet room and headphones or earphones.
+        <div class="ja">静かな環境で、ヘッドホンやイヤホンをご利用ください。</div></li>
+      <li>Set your volume at the start and do <b>not</b> change it while answering.
+        <div class="ja">はじめに設定した音量は、回答中に変更しないでください。</div></li>
+      <li>Listen to each sample and rate how <b>clear / intelligible</b> the speech is (5 = Excellent, 1 = Bad).
+        <div class="ja">各サンプルを聞き、音声の明瞭性（聞き取りやすさ）を評価してください（5:非常に良い〜1:非常に悪い）。</div></li>
+      <li>Use the memo box to note anything you noticed (optional).
+        <div class="ja">気づいた点があればメモ欄に記入してください（任意）。</div></li>
+      <li>When finished, download the CSV and upload it to the Google Form:
+        <a href="https://forms.gle/tSxYir6YXfjAXoPu5" target="_blank" rel="noopener">https://forms.gle/tSxYir6YXfjAXoPu5</a>
+        <div class="ja">回答が終わりましたらCSVをダウンロードし、Googleフォームにアップロードしてください。</div></li>
+    </ol>
+  </div>
+
+  <div id="samples"></div>
+</div>
+
+<div class="footer-bar">
+  <div id="progress">Answered / 回答済み: 0 / 20</div>
+  <button id="downloadBtn">Download clarity CSV / 明瞭性CSVをダウンロード</button>
+</div>
+
+<script src="samples.js"></script>
+<script>
+function buildRadioGroup(titleEn, titleJa, name, opts) {
+  const group = document.createElement("div");
+  group.className = "eval-group";
+  const title = document.createElement("div");
+  title.className = "eval-title";
+  title.innerHTML = titleEn + ' <span style="font-weight:normal;color:#888">/ ' + titleJa + '</span>';
+  group.appendChild(title);
+  const row = document.createElement("div");
+  row.className = "radio-options";
+  opts.forEach(o => {
+    const label = document.createElement("label");
+    label.className = "radio-label";
+    const input = document.createElement("input");
+    input.type = "radio"; input.name = name; input.value = o.v;
+    input.addEventListener("change", () => {
+      row.querySelectorAll(".radio-label").forEach(l => l.classList.remove("checked"));
+      label.classList.add("checked");
+      updateProgress();
+    });
+    label.appendChild(input);
+    label.appendChild(document.createTextNode(o.en));
+    row.appendChild(label);
+  });
+  group.appendChild(row);
+  return group;
+}
+
+const samplesRoot = document.getElementById("samples");
+SAMPLES.forEach((s, idx) => {
+  const no = idx + 1;
+  const item = document.createElement("div");
+  item.className = "audio-item";
+
+  const label = document.createElement("div");
+  label.className = "audio-label";
+  label.textContent = "Sample No." + no + " / 音声サンプル No." + no;
+  item.appendChild(label);
+
+  const audio = document.createElement("audio");
+  audio.controls = true; audio.src = s.file; audio.setAttribute("controlsList", "nodownload");
+  item.appendChild(audio);
+
+  const text = document.createElement("div");
+  text.className = "sample-text"; text.textContent = s.text;
+  item.appendChild(text);
+
+  item.appendChild(buildRadioGroup("Clarity", "明瞭性", "clarity_no" + no, CLARITY_OPTS));
+
+  const memoWrap = document.createElement("div");
+  memoWrap.className = "memo-wrap";
+  const memoLabel = document.createElement("label");
+  memoLabel.setAttribute("for", "memo_no" + no);
+  memoLabel.innerHTML = 'Memo <span style="font-weight:normal;color:#888">/ メモ（任意）</span>';
+  const memo = document.createElement("textarea");
+  memo.id = "memo_no" + no; memo.name = "memo_no" + no;
+  memo.placeholder = "e.g. muffled consonants, unnatural pauses... / 例：子音が不明瞭、不自然な間 など";
+  memoWrap.appendChild(memoLabel);
+  memoWrap.appendChild(memo);
+  item.appendChild(memoWrap);
+
+  samplesRoot.appendChild(item);
+});
+
+function updateProgress() {
+  let answered = 0;
+  for (let i = 1; i <= SAMPLES.length; i++) {
+    if (document.querySelector('input[name="clarity_no' + i + '"]:checked')) answered++;
+  }
+  document.getElementById("progress").textContent =
+    "Answered / 回答済み: " + answered + " / " + SAMPLES.length;
+}
+
+document.getElementById("downloadBtn").addEventListener("click", function () {
+  let missing = 0;
+  for (let i = 1; i <= SAMPLES.length; i++) {
+    if (!document.querySelector('input[name="clarity_no' + i + '"]:checked')) missing++;
+  }
+  if (missing > 0) {
+    const proceed = confirm(
+      "There are " + missing + " unanswered item(s). Download anyway?\n" +
+      "未回答が " + missing + " 件あります。このままダウンロードしますか？"
+    );
+    if (!proceed) return;
+  }
+
+  let csv = ["No", "type", "file", "clarity", "memo"].map(csvField).join(",") + "\n";
+  for (let i = 1; i <= SAMPLES.length; i++) {
+    const s = SAMPLES[i - 1];
+    const clarity = document.querySelector('input[name="clarity_no' + i + '"]:checked');
+    const memo = document.getElementById("memo_no" + i).value;
+    csv += [
+      "No." + i, s.type, s.file, clarity ? clarity.value : "NA", memo
+    ].map(csvField).join(",") + "\n";
+  }
+  downloadCsv("mos_clarity_results.csv", csv);
+});
+
+updateProgress();
+</script>
+</body>
+</html>
