@@ -96,9 +96,12 @@ function buildMatchups() {
   return pairs;
 }
 
-// Randomize match order, then randomize which clip is shown as A vs B.
-const DISPLAY = shuffle(buildMatchups()).map(pair =>
-  Math.random() < 0.5 ? { left: pair[0], right: pair[1] } : { left: pair[1], right: pair[0] }
+// Fixed match order + fixed A/B side (seeded -> same every load, shared across
+// evaluators). One deterministic RNG stream drives both steps.
+// Change ORDER_SEED in samples.js for a different fixed arrangement.
+const _rnd = mulberry32(ORDER_SEED + 1);
+const DISPLAY = shuffleWith(buildMatchups(), _rnd).map(pair =>
+  _rnd() < 0.5 ? { left: pair[0], right: pair[1] } : { left: pair[1], right: pair[0] }
 );
 
 function buildRadioGroup(titleEn, titleJa, name, opts) {
