@@ -115,11 +115,7 @@ SAMPLES.forEach((s, idx) => {
   const audio = document.createElement("audio");
   audio.controls = true; audio.src = s.file; audio.setAttribute("controlsList", "nodownload");
   item.appendChild(audio);
-
-  const text = document.createElement("div");
-  text.className = "sample-text"; text.textContent = s.text;
-  item.appendChild(text);
-
+  
   item.appendChild(buildRadioGroup("Clarity", "明瞭性", "clarity_no" + no, CLARITY_OPTS));
 
   const memoWrap = document.createElement("div");
