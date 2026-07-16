@@ -22,10 +22,7 @@
 
   .ab-wrap { display:flex; gap:12px; flex-wrap:wrap; }
   .ab-col { flex:1; min-width:240px; background:#fff; border:1px solid #e6e6e6; border-radius:6px; padding:12px; }
-  .ab-tag { font-weight:bold; font-size:13px; margin-bottom:6px; }
-  .ab-col.ref .ab-tag { color:#2c3e50; }
-  .ab-col.smp .ab-tag { color:#2c3e50; }
-  .ab-note { font-size:12px; color:#888; margin-top:4px; }
+  .ab-tag { font-weight:bold; font-size:13px; margin-bottom:6px; color:#2c3e50; }
   audio { width:100%; }
 
   .eval-group { display:flex; flex-direction:column; gap:5px; margin-top:6px; padding-top:10px; border-top:1px dashed #e0e0e0; }
@@ -59,10 +56,10 @@
         <div class="ja">静かな環境で、ヘッドホンやイヤホンをご利用ください。</div></li>
       <li>Set your volume at the start and do <b>not</b> change it while answering.
         <div class="ja">はじめに設定した音量は、回答中に変更しないでください。</div></li>
-      <li>For each item, listen to <b>A (reference speaker)</b> and <b>B (sample)</b> and compare them. Rate how similar B is to A <b>as a speaker / voice identity</b> — ignore the difference in wording.
-        <div class="ja">各項目で <b>A（基準話者）</b> と <b>B（サンプル）</b> を聴き比べ、B が A と<b>話者（声の同一性）</b>としてどれだけ似ているかを評価してください。文章の違いは無視してください。</div></li>
-      <li>5 = Very similar, 1 = Not similar at all. Use the memo box for notes (optional).
-        <div class="ja">5:非常に似ている〜1:全く似ていない。気づいた点はメモ欄へ（任意）。</div></li>
+      <li>Each item shows two clips, <b>Audio A</b> and <b>Audio B</b>. Listen to both and judge <b>how likely they are the same speaker</b> (voice identity). Ignore the difference in wording.
+        <div class="ja">各項目に <b>音声A</b> と <b>音声B</b> の2つがあります。両方を聞き、<b>同一話者にどれだけ聞こえるか</b>（声の同一性）で評価してください。文章の違いは無視してください。</div></li>
+      <li>5 = Very similar (clearly the same speaker), 1 = Not similar at all. Use the memo box for notes (optional).
+        <div class="ja">5:非常に似ている（明らかに同一話者）〜1:全く似ていない。気づいた点はメモ欄へ（任意）。</div></li>
       <li>When finished, download the CSV and upload it to the Google Form:
         <a href="https://forms.gle/tSxYir6YXfjAXoPu5" target="_blank" rel="noopener">https://forms.gle/tSxYir6YXfjAXoPu5</a>
         <div class="ja">回答が終わりましたらCSVをダウンロードし、Googleフォームにアップロードしてください。</div></li>
@@ -73,12 +70,37 @@
 </div>
 
 <div class="footer-bar">
-  <div id="progress">Answered / 回答済み: 0 / 20</div>
+  <div id="progress">Answered / 回答済み: 0 / 0</div>
   <button id="downloadBtn">Download similarity CSV / 話者類似性CSVをダウンロード</button>
 </div>
 
 <script src="samples.js"></script>
 <script>
+/* -------------------------------------------------------------------------
+   Build a FIXED set of cross-type matchups (no same-type pairs).
+   Default: each synthesized sample (s) is paired once with a recorded (d)
+   and once with a healthy (n) sample -> 20 matchups, balanced.
+   The SET is fixed (same for every evaluator, so results are comparable);
+   only the presentation order and the A/B side are randomized per load.
+   Edit this function if you want different pairings.
+   ------------------------------------------------------------------------- */
+function buildMatchups() {
+  const s = SAMPLES.filter(x => x.type === "s");
+  const d = SAMPLES.filter(x => x.type === "d");
+  const n = SAMPLES.filter(x => x.type === "n");
+  const pairs = [];
+  s.forEach((sv, i) => {
+    if (d.length) pairs.push([sv, d[i % d.length]]); // s vs d
+    if (n.length) pairs.push([sv, n[i % n.length]]); // s vs n
+  });
+  return pairs;
+}
+
+// Randomize match order, then randomize which clip is shown as A vs B.
+const DISPLAY = shuffle(buildMatchups()).map(pair =>
+  Math.random() < 0.5 ? { left: pair[0], right: pair[1] } : { left: pair[1], right: pair[0] }
+);
+
 function buildRadioGroup(titleEn, titleJa, name, opts) {
   const group = document.createElement("div");
   group.className = "eval-group";
@@ -112,46 +134,35 @@ function makeAudio(src) {
   return a;
 }
 
+function makeCol(tagText, sample) {
+  const col = document.createElement("div");
+  col.className = "ab-col";
+  const tag = document.createElement("div");
+  tag.className = "ab-tag";
+  tag.textContent = tagText;
+  col.appendChild(tag);
+  col.appendChild(makeAudio(sample.file));
+  return col;
+}
+
 const samplesRoot = document.getElementById("samples");
-SAMPLES.forEach((s, idx) => {
+DISPLAY.forEach((pair, idx) => {
   const no = idx + 1;
   const item = document.createElement("div");
   item.className = "audio-item";
 
   const label = document.createElement("div");
   label.className = "audio-label";
-  label.textContent = "Sample No." + no + " / 音声サンプル No." + no;
+  label.textContent = "Pair No." + no + " / ペア No." + no;
   item.appendChild(label);
 
-  // A/B comparison block
   const ab = document.createElement("div");
   ab.className = "ab-wrap";
-
-  const colA = document.createElement("div");
-  colA.className = "ab-col ref";
-  const tagA = document.createElement("div");
-  tagA.className = "ab-tag";
-  tagA.textContent = "A — Reference speaker / 基準話者";
-  colA.appendChild(tagA);
-  colA.appendChild(makeAudio(REFERENCE_AUDIO));
-  const noteA = document.createElement("div");
-  noteA.className = "ab-note";
-  noteA.textContent = "Same target speaker for all items. / 全項目で共通のターゲット話者。";
-  colA.appendChild(noteA);
-
-  const colB = document.createElement("div");
-  colB.className = "ab-col smp";
-  const tagB = document.createElement("div");
-  tagB.className = "ab-tag";
-  tagB.textContent = "B — Sample / サンプル";
-  colB.appendChild(tagB);
-  colB.appendChild(makeAudio(s.file));
-
-  ab.appendChild(colA);
-  ab.appendChild(colB);
+  ab.appendChild(makeCol("Audio A / 音声A", pair.left));
+  ab.appendChild(makeCol("Audio B / 音声B", pair.right));
   item.appendChild(ab);
 
-  item.appendChild(buildRadioGroup("Speaker similarity (B vs A)", "話者類似性（B対A）", "similarity_no" + no, SIMILARITY_OPTS));
+  item.appendChild(buildRadioGroup("Same speaker? (A vs B)", "同一話者か（A対B）", "similarity_no" + no, SIMILARITY_OPTS));
 
   const memoWrap = document.createElement("div");
   memoWrap.className = "memo-wrap";
@@ -170,16 +181,16 @@ SAMPLES.forEach((s, idx) => {
 
 function updateProgress() {
   let answered = 0;
-  for (let i = 1; i <= SAMPLES.length; i++) {
+  for (let i = 1; i <= DISPLAY.length; i++) {
     if (document.querySelector('input[name="similarity_no' + i + '"]:checked')) answered++;
   }
   document.getElementById("progress").textContent =
-    "Answered / 回答済み: " + answered + " / " + SAMPLES.length;
+    "Answered / 回答済み: " + answered + " / " + DISPLAY.length;
 }
 
 document.getElementById("downloadBtn").addEventListener("click", function () {
   let missing = 0;
-  for (let i = 1; i <= SAMPLES.length; i++) {
+  for (let i = 1; i <= DISPLAY.length; i++) {
     if (!document.querySelector('input[name="similarity_no' + i + '"]:checked')) missing++;
   }
   if (missing > 0) {
@@ -190,13 +201,14 @@ document.getElementById("downloadBtn").addEventListener("click", function () {
     if (!proceed) return;
   }
 
-  let csv = ["No", "type", "file", "reference", "similarity", "memo"].map(csvField).join(",") + "\n";
-  for (let i = 1; i <= SAMPLES.length; i++) {
-    const s = SAMPLES[i - 1];
-    const similarity = document.querySelector('input[name="similarity_no' + i + '"]:checked');
+  let csv = ["No", "A_type", "A_file", "B_type", "B_file", "similarity", "memo"].map(csvField).join(",") + "\n";
+  for (let i = 1; i <= DISPLAY.length; i++) {
+    const pair = DISPLAY[i - 1];
+    const sim = document.querySelector('input[name="similarity_no' + i + '"]:checked');
     const memo = document.getElementById("memo_no" + i).value;
     csv += [
-      "No." + i, s.type, s.file, REFERENCE_AUDIO, similarity ? similarity.value : "NA", memo
+      "No." + i, pair.left.type, pair.left.file, pair.right.type, pair.right.file,
+      sim ? sim.value : "NA", memo
     ].map(csvField).join(",") + "\n";
   }
   downloadCsv("mos_similarity_results.csv", csv);
