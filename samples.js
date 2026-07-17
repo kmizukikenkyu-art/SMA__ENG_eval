@@ -7,7 +7,6 @@
    researcher can map results back after collection.
    Evaluation sentences: VCTK held-out evaluation set (No.1-26).
    Edit `file` paths as needed (paths are relative to the HTML files).
-
    REFERENCE_AUDIO = the target speaker's natural speech, used as the common
    "A" clip on the speaker-similarity page.
    ========================================================================= */
