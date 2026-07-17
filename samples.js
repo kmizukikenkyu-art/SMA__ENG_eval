@@ -5,8 +5,10 @@
    Display order is fixed and shuffled so the type is NOT revealed to
    evaluators. The type + filename ARE written into the CSV so the
    researcher can map results back after collection.
+
    Evaluation sentences: VCTK held-out evaluation set (No.1-26).
    Edit `file` paths as needed (paths are relative to the HTML files).
+
    REFERENCE_AUDIO = the target speaker's natural speech, used as the common
    "A" clip on the speaker-similarity page.
    ========================================================================= */
@@ -20,18 +22,19 @@ const SAMPLES = [
   { type: "s", file: "synthe/VCTK003_p3_TE0.1_DP0.6_FL0.7_DE0.6.wav", text: "Six spoons of fresh snow peas, five thick slabs of blue cheese, and maybe a snack for her brother Bob." },
   { type: "s", file: "synthe/VCTK004_p4_TE0.1_DP0.5_FL0.8_DE0.6.wav", text: "We also need a small plastic snake and a big toy frog for the kids." },
   { type: "s", file: "synthe/VCTK005_p5_TE0.1_DP0.7_FL0.8_DE0.6.wav", text: "She can scoop these things into three red bags, and we will go meet her Wednesday at the train station." },
-  { type: "s", file: "synthe/VCTK006_p5_TE0.1_DP0.7_FL0.8_DE0.6.wav", text: "When the sunlight strikes raindrops in the air, they act as a prism and form a rainbow." },
   { type: "s", file: "synthe/VCTK007_p1_TE0.1_DP0.6_FL0.8_DE0.6.wav", text: "The rainbow is a division of white light into many beautiful colors." },
   { type: "s", file: "synthe/VCTK008_p2_TE0.1_DP0.5_FL0.7_DE0.6.wav", text: "These take the shape of a long round arch, with its path high above, and its two ends apparently beyond the horizon." },
   { type: "s", file: "synthe/VCTK009_p3_TE0.1_DP0.6_FL0.7_DE0.6.wav", text: "There is, according to legend, a boiling pot of gold at one end." },
   { type: "s", file: "synthe/VCTK010_p4_TE0.1_DP0.5_FL0.8_DE0.6.wav", text: "People look, but no one ever finds it." },
+  // NOTE: VCTK006 (10th synthesized sample) not uploaded yet. Add it here if needed:
+  // { type: "s", file: "synthe/VCTK006_p5_TE0.1_DP0.7_FL0.8_DE0.6.wav", text: "When the sunlight strikes raindrops in the air, they act as a prism and form a rainbow." },
 
   // --- recorded (d) : folder "recoded/" (spelling matches the uploaded folder) ---
   { type: "d", file: "recoded/VCTK007.wav", text: "The rainbow is a division of white light into many beautiful colors." },
   { type: "d", file: "recoded/VCTK013.wav", text: "Some have accepted it as a miracle without physical explanation." },
   { type: "d", file: "recoded/VCTK016.wav", text: "The Norsemen considered the rainbow as a bridge over which the gods passed from earth to their home in the sky." },
   { type: "d", file: "recoded/VCTK023.wav", text: "If the red of the second bow falls upon the green of the first, the result is to give a bow with an abnormally wide yellow band, since red and green light when mixed form yellow." },
-  { type: "d", file: "recoded/VCTK025.wav", text: "He has not been named." }, // TODO: fill in the VCTK025 sentence text (verify against the audio)
+  { type: "d", file: "recoded/VCTK025.wav", text: "" }, // TODO: fill in the VCTK025 sentence text (verify against the audio)
 
   // --- healthy speaker (n) : folder "non/" ---
   { type: "n", file: "non/VCTK012_p1_TE0.0_DP0.0_FL0.0_DE0.0.wav", text: "Throughout the centuries people have explained the rainbow in various ways." },
@@ -57,7 +60,20 @@ const SIMILARITY_OPTS = [
   { v: 1, en: "1: Not similar at all", ja: "全く似ていない" }
 ];
 
-const GOOGLE_FORM_URL = "https://forms.gle/ERKmPbL2y2kLJArH9";
+// ▼▼▼ Google フォームのURLはここだけ変えれば全ページに反映されます ▼▼▼
+const GOOGLE_FORM_URL = "https://forms.gle/tSxYir6YXfjAXoPu5";
+// ▲▲▲ -------------------------------------------------------- ▲▲▲
+
+// Fill every <a class="js-form-link"> with the URL above.
+// (guarded so this file still loads in non-browser contexts)
+if (typeof document !== "undefined") {
+  document.addEventListener("DOMContentLoaded", function () {
+    document.querySelectorAll("a.js-form-link").forEach(function (a) {
+      a.href = GOOGLE_FORM_URL;
+      if (a.hasAttribute("data-show-url")) a.textContent = GOOGLE_FORM_URL;
+    });
+  });
+}
 
 /* Seed for the fixed display order. Change this number if you want a
    different (but still fixed) random order across all evaluators. */
@@ -93,7 +109,6 @@ function csvField(value) {
   const s = String(value == null ? "" : value);
   return '"' + s.replace(/"/g, '""') + '"';
 }
-
 
 /* Trigger a CSV download with BOM (Excel-safe UTF-8) */
 function downloadCsv(filename, csvContent) {
