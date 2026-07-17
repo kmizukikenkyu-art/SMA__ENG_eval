@@ -21,12 +21,11 @@ const SAMPLES = [
   { type: "s", file: "synthe/VCTK003_p3_TE0.1_DP0.6_FL0.7_DE0.6.wav", text: "Six spoons of fresh snow peas, five thick slabs of blue cheese, and maybe a snack for her brother Bob." },
   { type: "s", file: "synthe/VCTK004_p4_TE0.1_DP0.5_FL0.8_DE0.6.wav", text: "We also need a small plastic snake and a big toy frog for the kids." },
   { type: "s", file: "synthe/VCTK005_p5_TE0.1_DP0.7_FL0.8_DE0.6.wav", text: "She can scoop these things into three red bags, and we will go meet her Wednesday at the train station." },
+  { type: "s", file: "synthe/VCTK006_p5_TE0.1_DP0.7_FL0.8_DE0.6.wav", text: "When the sunlight strikes raindrops in the air, they act as a prism and form a rainbow." },
   { type: "s", file: "synthe/VCTK007_p1_TE0.1_DP0.6_FL0.8_DE0.6.wav", text: "The rainbow is a division of white light into many beautiful colors." },
   { type: "s", file: "synthe/VCTK008_p2_TE0.1_DP0.5_FL0.7_DE0.6.wav", text: "These take the shape of a long round arch, with its path high above, and its two ends apparently beyond the horizon." },
   { type: "s", file: "synthe/VCTK009_p3_TE0.1_DP0.6_FL0.7_DE0.6.wav", text: "There is, according to legend, a boiling pot of gold at one end." },
   { type: "s", file: "synthe/VCTK010_p4_TE0.1_DP0.5_FL0.8_DE0.6.wav", text: "People look, but no one ever finds it." },
-  // NOTE: VCTK006 (10th synthesized sample) not uploaded yet. Add it here if needed:
-  { type: "s", file: "synthe/VCTK006_p5_TE0.1_DP0.7_FL0.8_DE0.6.wav", text: "When the sunlight strikes raindrops in the air, they act as a prism and form a rainbow." },
 
   // --- recorded (d) : folder "recoded/" (spelling matches the uploaded folder) ---
   { type: "d", file: "recoded/VCTK007.wav", text: "The rainbow is a division of white light into many beautiful colors." },
