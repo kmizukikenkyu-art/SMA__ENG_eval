@@ -60,9 +60,9 @@
         <div class="ja">各項目に <b>音声A</b> と <b>音声B</b> の2つがあります。両方を聞き、<b>同一話者にどれだけ聞こえるか</b>（声の同一性）で評価してください。文章の違いは無視してください。</div></li>
       <li>5 = Very similar (clearly the same speaker), 1 = Not similar at all. Use the memo box for notes (optional).
         <div class="ja">5:非常に似ている（明らかに同一話者）〜1:全く似ていない。気づいた点はメモ欄へ（任意）。</div></li>
-      <li>When finished, download the CSV and upload it to the Google Form:
-        <a href="https://forms.gle/tSxYir6YXfjAXoPu5" target="_blank" rel="noopener">https://forms.gle/ERKmPbL2y2kLJArH9</a>
-        <div class="ja">回答が終わりましたらCSVをダウンロードし、Googleフォームにアップロードしてください。</div></li>
+      <li>When finished, click the button to download <b>one combined CSV</b> (clarity + similarity), then upload it to the Google Form:
+        <a href="https://forms.gle/tSxYir6YXfjAXoPu5" target="_blank" rel="noopener">https://forms.gle/tSxYir6YXfjAXoPu5</a>
+        <div class="ja">回答が終わったらボタンを押して<b>まとめCSV（明瞭性＋話者類似性）</b>を1つダウンロードし、Googleフォームにアップロードしてください。</div></li>
     </ol>
   </div>
 
@@ -71,7 +71,7 @@
 
 <div class="footer-bar">
   <div id="progress">Answered / 回答済み: 0 / 0</div>
-  <button id="downloadBtn">Download similarity CSV / 話者類似性CSVをダウンロード</button>
+  <button id="downloadBtn">Download combined CSV (clarity + similarity) / まとめCSVをダウンロード</button>
 </div>
 
 <script src="samples.js"></script>
@@ -223,18 +223,47 @@ document.getElementById("downloadBtn").addEventListener("click", function () {
     if (!proceed) return;
   }
 
-  let csv = ["No", "pair", "A_type", "A_file", "B_type", "B_file", "similarity", "memo"].map(csvField).join(",") + "\n";
+  // Unified schema covering both tasks:
+  //   task, no, type, pair, file_A, file_B, score, memo
+  const header = ["task", "no", "type", "pair", "file_A", "file_B", "score", "memo"];
+  let csv = header.map(csvField).join(",") + "\n";
+
+  // 1) clarity rows (from localStorage, saved on the clarity page)
+  let clarityLoaded = false;
+  try {
+    const raw = localStorage.getItem("mos_clarity");
+    if (raw) {
+      const data = JSON.parse(raw);
+      (data.rows || []).forEach(r => {
+        csv += ["clarity", r.no, r.type, "", r.file, "", r.clarity, r.memo].map(csvField).join(",") + "\n";
+        clarityLoaded = true;
+      });
+    }
+  } catch (e) { /* ignore, handled below */ }
+
+  if (!clarityLoaded) {
+    const cont = confirm(
+      "No saved clarity answers were found (did you complete the clarity page first?).\n" +
+      "Download similarity only?\n\n" +
+      "保存された明瞭性の回答が見つかりません（先に明瞭性ページを完了しましたか？）。\n" +
+      "話者類似性だけをダウンロードしますか？"
+    );
+    if (!cont) return;
+  }
+
+  // 2) similarity rows (this page)
   for (let i = 1; i <= DISPLAY.length; i++) {
     const pair = DISPLAY[i - 1];
-    const combo = [pair.left.type, pair.right.type].sort().join(""); // e.g. ds, ns, dd, dn
+    const combo = [pair.left.type, pair.right.type].sort().join(""); // ds, ns, dd, dn
     const sim = document.querySelector('input[name="similarity_no' + i + '"]:checked');
     const memo = document.getElementById("memo_no" + i).value;
     csv += [
-      "No." + i, combo, pair.left.type, pair.left.file, pair.right.type, pair.right.file,
+      "similarity", "No." + i, "", combo, pair.left.file, pair.right.file,
       sim ? sim.value : "NA", memo
     ].map(csvField).join(",") + "\n";
   }
-  downloadCsv("mos_similarity_results.csv", csv);
+
+  downloadCsv("mos_combined_results.csv", csv);
 });
 
 updateProgress();

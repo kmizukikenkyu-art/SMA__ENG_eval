@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Results aggregation / 結果集計</title>
+<style>
+  body { font-family:'Helvetica Neue', Arial, sans-serif; line-height:1.6; background:#f4f7f6; color:#333; margin:0; padding:32px 20px 80px; }
+  .container { max-width:900px; margin:0 auto; background:#fff; padding:28px; border-radius:8px; box-shadow:0 4px 6px rgba(0,0,0,0.1); }
+  h1 { color:#2c3e50; font-size:22px; margin:0 0 4px; }
+  .sub { color:#7f8c8d; font-size:13px; margin-bottom:18px; }
+  h2 { color:#2c3e50; font-size:16px; margin:26px 0 8px; border-bottom:2px solid #eef2f5; padding-bottom:4px; }
+  .drop { border:2px dashed #9bbcd6; border-radius:8px; background:#f7fbff; padding:26px; text-align:center; color:#456; cursor:pointer; transition:.15s; }
+  .drop.hover { background:#eaf4ff; border-color:#3498db; }
+  .drop input { display:none; }
+  .files { font-size:13px; color:#555; margin-top:10px; }
+  .files span { display:inline-block; background:#eef2f5; border-radius:12px; padding:2px 10px; margin:2px 4px; }
+  table { border-collapse:collapse; width:100%; font-size:13px; margin-top:6px; }
+  th, td { border:1px solid #e2e2e2; padding:6px 9px; text-align:right; }
+  th { background:#f4f7f6; color:#2c3e50; }
+  td.l, th.l { text-align:left; }
+  .muted { color:#888; font-size:12px; }
+  .tag { display:inline-block; font-size:11px; padding:1px 7px; border-radius:10px; color:#fff; }
+  .ok { background:#2ecc71; } .bad { background:#e74c3c; }
+  .note { font-size:12px; color:#666; margin:4px 0 0; }
+  .controls { margin:8px 0 0; font-size:13px; }
+  .controls input { width:60px; }
+  button.dl { margin-top:14px; padding:10px 22px; font-size:14px; background:#2ecc71; color:#fff; border:none; border-radius:5px; cursor:pointer; font-weight:bold; }
+  button.dl:hover { background:#27ae60; }
+  .empty { color:#999; font-style:italic; }
+  code { background:#f1f1f1; padding:1px 5px; border-radius:3px; font-size:12px; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>Results aggregation / 結果集計</h1>
+  <div class="sub">評価者から集めたCSV（まとめCSV／個別CSVどちらでも可）をまとめて読み込み、平均を自動集計します。データはブラウザ内でのみ処理され、どこにも送信されません。</div>
+
+  <div id="drop" class="drop">
+    ここに CSV ファイルをドラッグ＆ドロップ、またはクリックして選択（複数可）
+    <input id="fileInput" type="file" accept=".csv,text/csv" multiple>
+    <div id="fileList" class="files"></div>
+  </div>
+
+  <div class="controls">
+    注意チェック（dd）の合格しきい値 / attention-check (dd) pass threshold ≥
+    <input id="thr" type="number" min="1" max="5" step="0.1" value="3.5">
+    <span class="muted">（ddは同一話者ペアなので高いはず。これ未満の評価者を要確認としてフラグ）</span>
+  </div>
+
+  <div id="report"></div>
+</div>
+
+<script>
+/* ---------- robust CSV parser (handles quotes, escaped quotes, newlines, BOM) ---------- */
+function parseCSV(text) {
+  text = text.replace(/^﻿/, "");
+  const rows = []; let row = [], field = "", i = 0, inQ = false;
+  while (i < text.length) {
+    const c = text[i];
+    if (inQ) {
+      if (c === '"') {
+        if (text[i + 1] === '"') { field += '"'; i += 2; continue; }
+        inQ = false; i++; continue;
+      }
+      field += c; i++; continue;
+    }
+    if (c === '"') { inQ = true; i++; continue; }
+    if (c === ',') { row.push(field); field = ""; i++; continue; }
+    if (c === '\r') { i++; continue; }
+    if (c === '\n') { row.push(field); rows.push(row); row = []; field = ""; i++; continue; }
+    field += c; i++;
+  }
+  if (field.length > 0 || row.length > 0) { row.push(field); rows.push(row); }
+  return rows.filter(r => r.length && !(r.length === 1 && r[0].trim() === ""));
+}
+
+function toObjects(rows) {
+  if (!rows.length) return [];
+  const head = rows[0].map(h => h.trim());
+  return rows.slice(1).map(r => {
+    const o = {};
+    head.forEach((h, idx) => o[h] = (r[idx] !== undefined ? r[idx] : ""));
+    return o;
+  });
+}
+
+/* Normalize one file's rows -> {clarity:[{ev,file,type,score}], similarity:[{ev,combo,a,b,score}]} */
+function normalize(objs, evName) {
+  const out = { clarity: [], similarity: [] };
+  if (!objs.length) return out;
+  const cols = Object.keys(objs[0]);
+  const has = c => cols.includes(c);
+  const num = v => { const n = parseFloat(v); return isNaN(n) ? null : n; };
+
+  if (has("task")) { // combined schema
+    objs.forEach(o => {
+      if (o.task === "clarity") {
+        const s = num(o.score); if (s !== null) out.clarity.push({ ev: evName, file: o.file_A, type: o.type, score: s });
+      } else if (o.task === "similarity") {
+        const s = num(o.score); if (s !== null) out.similarity.push({ ev: evName, combo: o.pair, a: o.file_A, b: o.file_B, score: s });
+      }
+    });
+  } else if (has("clarity")) { // legacy clarity
+    objs.forEach(o => { const s = num(o.clarity); if (s !== null) out.clarity.push({ ev: evName, file: o.file, type: o.type, score: s }); });
+  } else if (has("similarity") && (has("A_file") || has("file_A"))) { // legacy similarity
+    objs.forEach(o => {
+      const s = num(o.similarity); if (s === null) return;
+      const a = o.A_file || o.file_A, b = o.B_file || o.file_B;
+      const combo = o.pair || [o.A_type, o.B_type].sort().join("");
+      out.similarity.push({ ev: evName, combo: combo, a: a, b: b, score: s });
+    });
+  }
+  return out;
+}
+
+/* ---------- stats ---------- */
+function stats(arr) {
+  const n = arr.length;
+  if (!n) return { n: 0, mean: NaN, sd: NaN };
+  const mean = arr.reduce((a, b) => a + b, 0) / n;
+  const sd = n > 1 ? Math.sqrt(arr.reduce((a, b) => a + (b - mean) ** 2, 0) / (n - 1)) : 0;
+  return { n, mean, sd };
+}
+const f2 = x => isNaN(x) ? "–" : x.toFixed(2);
+const base = p => (p || "").split("/").pop();
+
+/* ---------- state ---------- */
+const ALL = { clarity: [], similarity: [], evaluators: new Set() };
+
+function ingest(name, text) {
+  const evName = name.replace(/\.csv$/i, "");
+  const norm = normalize(toObjects(parseCSV(text)), evName);
+  if (!norm.clarity.length && !norm.similarity.length) return false;
+  ALL.clarity.push(...norm.clarity);
+  ALL.similarity.push(...norm.similarity);
+  ALL.evaluators.add(evName);
+  return true;
+}
+
+/* ---------- rendering ---------- */
+function groupStats(records, keyFn) {
+  const m = {};
+  records.forEach(r => { (m[keyFn(r)] = m[keyFn(r)] || []).push(r.score); });
+  return Object.entries(m).map(([k, v]) => ({ key: k, ...stats(v) }));
+}
+
+function table(headers, rows) {
+  let h = "<table><thead><tr>" + headers.map((x, i) =>
+    '<th class="' + (i === 0 ? "l" : "") + '">' + x + "</th>").join("") + "</tr></thead><tbody>";
+  h += rows.map(cells => "<tr>" + cells.map((c, i) =>
+    '<td class="' + (i === 0 ? "l" : "") + '">' + c + "</td>").join("") + "</tr>").join("");
+  return h + "</tbody></table>";
+}
+
+const COMBO_LABEL = {
+  ds: "sd  合成×収録（どれだけ近づいたか）",
+  ns: "sn  合成×健常（どれだけ離れているか）",
+  dd: "dd  収録×収録（注意チェック・同一話者）",
+  dn: "dn  収録×健常（下限・別話者）"
+};
+const TYPE_LABEL = { s: "s 合成", d: "d 収録", n: "n 健常" };
+
+function render() {
+  const rep = document.getElementById("report");
+  if (!ALL.evaluators.size) { rep.innerHTML = ""; return; }
+  const thr = parseFloat(document.getElementById("thr").value) || 3.5;
+  let html = "";
+
+  html += "<h2>概要 / Overview</h2>";
+  html += '<div class="note">評価者（ファイル）数: <b>' + ALL.evaluators.size + "</b> ／ 明瞭性データ: <b>" +
+    ALL.clarity.length + "</b> 件 ／ 話者類似性データ: <b>" + ALL.similarity.length + "</b> 件</div>";
+
+  // Clarity by type
+  html += "<h2>明瞭性：種別ごと / Clarity by type</h2>";
+  if (ALL.clarity.length) {
+    const g = groupStats(ALL.clarity, r => r.type).sort((a, b) => a.key.localeCompare(b.key));
+    html += table(["種別 type", "N", "平均 mean", "SD"],
+      g.map(x => [TYPE_LABEL[x.key] || x.key, x.n, f2(x.mean), f2(x.sd)]));
+  } else html += '<div class="empty">データなし</div>';
+
+  // Clarity by sample
+  html += "<h2>明瞭性：サンプルごと / Clarity by sample</h2>";
+  if (ALL.clarity.length) {
+    const g = groupStats(ALL.clarity, r => r.file).sort((a, b) => base(a.key).localeCompare(base(b.key)));
+    html += table(["サンプル file", "N", "平均 mean", "SD"],
+      g.map(x => [base(x.key), x.n, f2(x.mean), f2(x.sd)]));
+  } else html += '<div class="empty">データなし</div>';
+
+  // Similarity by combo
+  html += "<h2>話者類似性：対戦タイプごと / Similarity by pair-type</h2>";
+  if (ALL.similarity.length) {
+    const order = { ds: 0, ns: 1, dd: 2, dn: 3 };
+    const g = groupStats(ALL.similarity, r => r.combo).sort((a, b) => (order[a.key] ?? 9) - (order[b.key] ?? 9));
+    html += table(["対戦 pair", "N", "平均 mean", "SD"],
+      g.map(x => [COMBO_LABEL[x.key] || x.key, x.n, f2(x.mean), f2(x.sd)]));
+    html += '<div class="note">目安：dd は高く（同一話者）、dn は低く（別話者）出るのが正常。sd が高いほど合成がターゲットに近い。</div>';
+  } else html += '<div class="empty">データなし</div>';
+
+  // Similarity by specific pair
+  html += "<h2>話者類似性：ペアごと / Similarity by specific pair</h2>";
+  if (ALL.similarity.length) {
+    const g = groupStats(ALL.similarity, r => [base(r.a), base(r.b)].sort().join("  ⟷  "))
+      .sort((a, b) => a.key.localeCompare(b.key));
+    html += table(["ペア pair", "N", "平均 mean", "SD"],
+      g.map(x => [x.key, x.n, f2(x.mean), f2(x.sd)]));
+  } else html += '<div class="empty">データなし</div>';
+
+  // Attention check (dd per evaluator)
+  html += "<h2>注意チェック / Attention check（dd, ≥ " + thr + "）</h2>";
+  const dd = ALL.similarity.filter(r => r.combo === "dd");
+  if (dd.length) {
+    const g = groupStats(dd, r => r.ev).sort((a, b) => a.key.localeCompare(b.key));
+    html += table(["評価者 evaluator", "dd件数 N", "dd平均 mean", "判定"],
+      g.map(x => {
+        const pass = x.mean >= thr;
+        const tag = '<span class="tag ' + (pass ? "ok" : "bad") + '">' + (pass ? "OK" : "要確認 CHECK") + "</span>";
+        return [x.key, x.n, f2(x.mean), tag];
+      }));
+    html += '<div class="note">dd（同一話者）の平均が低い評価者は、真面目に聴けていない可能性があります。除外の判断材料に。</div>';
+  } else html += '<div class="empty">dd（注意チェック）データがありません。</div>';
+
+  html += '<button class="dl" id="dlAgg">集計結果をCSVでダウンロード</button>';
+  rep.innerHTML = html;
+  document.getElementById("dlAgg").addEventListener("click", downloadAggregate);
+}
+
+/* ---------- download aggregated CSV ---------- */
+function csvField(v) { return '"' + String(v == null ? "" : v).replace(/"/g, '""') + '"'; }
+function downloadAggregate() {
+  const thr = parseFloat(document.getElementById("thr").value) || 3.5;
+  let out = "";
+  const section = (title, headers, rows) => {
+    out += title + "\n" + headers.map(csvField).join(",") + "\n";
+    rows.forEach(r => out += r.map(csvField).join(",") + "\n");
+    out += "\n";
+  };
+  section("Clarity by type",
+    ["type", "N", "mean", "SD"],
+    groupStats(ALL.clarity, r => r.type).sort((a, b) => a.key.localeCompare(b.key)).map(x => [x.key, x.n, f2(x.mean), f2(x.sd)]));
+  section("Clarity by sample",
+    ["file", "N", "mean", "SD"],
+    groupStats(ALL.clarity, r => r.file).sort((a, b) => a.key.localeCompare(b.key)).map(x => [x.key, x.n, f2(x.mean), f2(x.sd)]));
+  section("Similarity by pair-type",
+    ["pair", "N", "mean", "SD"],
+    groupStats(ALL.similarity, r => r.combo).map(x => [x.key, x.n, f2(x.mean), f2(x.sd)]));
+  section("Similarity by specific pair",
+    ["pair", "N", "mean", "SD"],
+    groupStats(ALL.similarity, r => [base(r.a), base(r.b)].sort().join(" <-> ")).map(x => [x.key, x.n, f2(x.mean), f2(x.sd)]));
+  section("Attention check dd (threshold " + thr + ")",
+    ["evaluator", "N", "mean", "pass"],
+    groupStats(ALL.similarity.filter(r => r.combo === "dd"), r => r.ev).map(x => [x.key, x.n, f2(x.mean), x.mean >= thr ? "OK" : "CHECK"]));
+
+  const bom = new Uint8Array([0xEF, 0xBB, 0xBF]);
+  const blob = new Blob([bom, out], { type: "text/csv;charset=utf-8;" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob); a.download = "mos_aggregate.csv";
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+}
+
+/* ---------- file loading ---------- */
+const drop = document.getElementById("drop");
+const fileInput = document.getElementById("fileInput");
+const fileList = document.getElementById("fileList");
+const loaded = [];
+
+function handleFiles(files) {
+  const arr = Array.from(files);
+  let pending = arr.length;
+  if (!pending) return;
+  arr.forEach(file => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const ok = ingest(file.name, reader.result);
+      loaded.push((ok ? "" : "⚠ ") + file.name);
+      if (--pending === 0) {
+        fileList.innerHTML = loaded.map(n => "<span>" + n + "</span>").join("");
+        render();
+      }
+    };
+    reader.readAsText(file);
+  });
+}
+
+drop.addEventListener("click", () => fileInput.click());
+fileInput.addEventListener("change", e => handleFiles(e.target.files));
+["dragenter", "dragover"].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add("hover"); }));
+["dragleave", "drop"].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove("hover"); }));
+drop.addEventListener("drop", e => handleFiles(e.dataTransfer.files));
+document.getElementById("thr").addEventListener("input", render);
+</script>
+</body>
+</html>

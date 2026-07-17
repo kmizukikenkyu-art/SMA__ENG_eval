@@ -53,24 +53,17 @@
         <div class="ja">各サンプルを聞き、音声の明瞭性（聞き取りやすさ）を評価してください（5:非常に良い〜1:非常に悪い）。</div></li>
       <li>Use the memo box to note anything you noticed (optional).
         <div class="ja">気づいた点があればメモ欄に記入してください（任意）。</div></li>
-      <li>When finished, download the CSV and upload it to the Google Form:
-        <a href="https://forms.gle/tSxYir6YXfjAXoPu5" target="_blank" rel="noopener">https://forms.gle/ERKmPbL2y2kLJArH9</a>
-        <div class="ja">回答が終わりましたらCSVをダウンロードし、Googleフォームにアップロードしてください。</div></li>
+      <li>When you finish this page, your answers are saved automatically and you move on to the speaker-similarity task. You download <b>one combined CSV at the very end</b>.
+        <div class="ja">このページを終えると回答は自動保存され、話者類似性へ進みます。CSVは<b>最後に1つだけ</b>ダウンロードします。</div></li>
     </ol>
   </div>
 
   <div id="samples"></div>
-
-  <div style="text-align:center; margin-top:30px;">
-    <a href="similarity.html" style="display:inline-block; padding:14px 34px; font-size:16px; background:#3498db; color:#fff; border-radius:5px; text-decoration:none; font-weight:bold;">
-      Next: Speaker similarity / 話者類似性へ進む &raquo;
-    </a>
-  </div>
 </div>
 
 <div class="footer-bar">
   <div id="progress">Answered / 回答済み: 0 / 20</div>
-  <button id="downloadBtn">Download clarity CSV / 明瞭性CSVをダウンロード</button>
+  <button id="downloadBtn">Save &amp; continue to speaker similarity / 保存して話者類似性へ進む &raquo;</button>
 </div>
 
 <script src="samples.js"></script>
@@ -121,9 +114,9 @@ ORDER.forEach((s, idx) => {
   audio.controls = true; audio.src = s.file; audio.setAttribute("controlsList", "nodownload");
   item.appendChild(audio);
 
-  // const text = document.createElement("div");
-  // text.className = "sample-text"; text.textContent = s.text;
-  // item.appendChild(text);
+  const text = document.createElement("div");
+  text.className = "sample-text"; text.textContent = s.text;
+  item.appendChild(text);
 
   item.appendChild(buildRadioGroup("Clarity", "明瞭性", "clarity_no" + no, CLARITY_OPTS));
 
@@ -153,27 +146,37 @@ function updateProgress() {
 
 document.getElementById("downloadBtn").addEventListener("click", function () {
   let missing = 0;
-  for (let i = 1; i <= SAMPLES.length; i++) {
+  for (let i = 1; i <= ORDER.length; i++) {
     if (!document.querySelector('input[name="clarity_no' + i + '"]:checked')) missing++;
   }
   if (missing > 0) {
     const proceed = confirm(
-      "There are " + missing + " unanswered item(s). Download anyway?\n" +
-      "未回答が " + missing + " 件あります。このままダウンロードしますか？"
+      "There are " + missing + " unanswered item(s). Continue anyway?\n" +
+      "未回答が " + missing + " 件あります。このまま進みますか？"
     );
     if (!proceed) return;
   }
 
-  let csv = ["No", "type", "file", "clarity", "memo"].map(csvField).join(",") + "\n";
+  // Save clarity answers locally, then continue to the similarity task.
+  // The final combined CSV is produced on the similarity page.
+  const rows = [];
   for (let i = 1; i <= ORDER.length; i++) {
     const s = ORDER[i - 1];
     const clarity = document.querySelector('input[name="clarity_no' + i + '"]:checked');
-    const memo = document.getElementById("memo_no" + i).value;
-    csv += [
-      "No." + i, s.type, s.file, clarity ? clarity.value : "NA", memo
-    ].map(csvField).join(",") + "\n";
+    rows.push({
+      no: "No." + i, type: s.type, file: s.file,
+      clarity: clarity ? clarity.value : "NA",
+      memo: document.getElementById("memo_no" + i).value
+    });
   }
-  downloadCsv("mos_clarity_results.csv", csv);
+  try {
+    localStorage.setItem("mos_clarity", JSON.stringify({ savedAt: new Date().toISOString(), rows: rows }));
+  } catch (e) {
+    alert("Could not save locally (private browsing?). Please try a normal window.\n" +
+          "ローカル保存に失敗しました。プライベートブラウズを避けて通常のウィンドウでお試しください。");
+    return;
+  }
+  window.location.href = "similarity.html";
 });
 
 updateProgress();
