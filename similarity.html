@@ -115,8 +115,8 @@ function buildMatchups() {
   return pairs;
 }
 
-// Fixed match order + fixed A/B side (seeded -> same every load, shared across
-// evaluators). One deterministic RNG stream drives both steps.
+// Fixed random order + fixed A/B side: shuffled once (seeded), so it stays the
+// same on every load. One deterministic RNG stream drives both steps.
 // Change ORDER_SEED in samples.js for a different fixed arrangement.
 const _rnd = mulberry32(ORDER_SEED + 1);
 const DISPLAY = shuffleWith(buildMatchups(), _rnd).map(pair =>

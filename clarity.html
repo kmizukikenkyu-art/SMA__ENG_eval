@@ -60,11 +60,12 @@
   </div>
 
   <div id="samples"></div>
+
   <div style="text-align:center; margin-top:30px;">
-  <a href="similarity.html" style="display:inline-block; padding:14px 34px; font-size:16px; background:#3498db; color:#fff; border-radius:5px; text-decoration:none; font-weight:bold;">
-    Next: Speaker similarity / 話者類似性へ進む &raquo;
-  </a>
-</div>
+    <a href="similarity.html" style="display:inline-block; padding:14px 34px; font-size:16px; background:#3498db; color:#fff; border-radius:5px; text-decoration:none; font-weight:bold;">
+      Next: Speaker similarity / 話者類似性へ進む &raquo;
+    </a>
+  </div>
 </div>
 
 <div class="footer-bar">
@@ -101,8 +102,12 @@ function buildRadioGroup(titleEn, titleJa, name, opts) {
   return group;
 }
 
+// Fixed random order: shuffled once (seeded), so it stays the same on every load.
+// Change ORDER_SEED in samples.js for a different fixed order.
+const ORDER = seededShuffle(SAMPLES, ORDER_SEED);
+
 const samplesRoot = document.getElementById("samples");
-SAMPLES.forEach((s, idx) => {
+ORDER.forEach((s, idx) => {
   const no = idx + 1;
   const item = document.createElement("div");
   item.className = "audio-item";
@@ -115,7 +120,11 @@ SAMPLES.forEach((s, idx) => {
   const audio = document.createElement("audio");
   audio.controls = true; audio.src = s.file; audio.setAttribute("controlsList", "nodownload");
   item.appendChild(audio);
-  
+
+  const text = document.createElement("div");
+  text.className = "sample-text"; text.textContent = s.text;
+  item.appendChild(text);
+
   item.appendChild(buildRadioGroup("Clarity", "明瞭性", "clarity_no" + no, CLARITY_OPTS));
 
   const memoWrap = document.createElement("div");
@@ -156,8 +165,8 @@ document.getElementById("downloadBtn").addEventListener("click", function () {
   }
 
   let csv = ["No", "type", "file", "clarity", "memo"].map(csvField).join(",") + "\n";
-  for (let i = 1; i <= SAMPLES.length; i++) {
-    const s = SAMPLES[i - 1];
+  for (let i = 1; i <= ORDER.length; i++) {
+    const s = ORDER[i - 1];
     const clarity = document.querySelector('input[name="clarity_no' + i + '"]:checked');
     const memo = document.getElementById("memo_no" + i).value;
     csv += [
