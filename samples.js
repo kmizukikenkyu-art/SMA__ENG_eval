@@ -27,14 +27,14 @@ const SAMPLES = [
   { type: "s", file: "synthe/VCTK009_p3_TE0.1_DP0.6_FL0.7_DE0.6.wav", text: "There is, according to legend, a boiling pot of gold at one end." },
   { type: "s", file: "synthe/VCTK010_p4_TE0.1_DP0.5_FL0.8_DE0.6.wav", text: "People look, but no one ever finds it." },
   // NOTE: VCTK006 (10th synthesized sample) not uploaded yet. Add it here if needed:
-  // { type: "s", file: "synthe/VCTK006_p5_TE0.1_DP0.7_FL0.8_DE0.6.wav", text: "When the sunlight strikes raindrops in the air, they act as a prism and form a rainbow." },
+  { type: "s", file: "synthe/VCTK006_p5_TE0.1_DP0.7_FL0.8_DE0.6.wav", text: "When the sunlight strikes raindrops in the air, they act as a prism and form a rainbow." },
 
   // --- recorded (d) : folder "recoded/" (spelling matches the uploaded folder) ---
   { type: "d", file: "recoded/VCTK007.wav", text: "The rainbow is a division of white light into many beautiful colors." },
   { type: "d", file: "recoded/VCTK013.wav", text: "Some have accepted it as a miracle without physical explanation." },
   { type: "d", file: "recoded/VCTK016.wav", text: "The Norsemen considered the rainbow as a bridge over which the gods passed from earth to their home in the sky." },
   { type: "d", file: "recoded/VCTK023.wav", text: "If the red of the second bow falls upon the green of the first, the result is to give a bow with an abnormally wide yellow band, since red and green light when mixed form yellow." },
-  { type: "d", file: "recoded/VCTK025.wav", text: "" }, // TODO: fill in the VCTK025 sentence text (verify against the audio)
+  { type: "d", file: "recoded/VCTK025.wav", text: "He has not been named." }, // TODO: fill in the VCTK025 sentence text (verify against the audio)
 
   // --- healthy speaker (n) : folder "non/" ---
   { type: "n", file: "non/VCTK012_p1_TE0.0_DP0.0_FL0.0_DE0.0.wav", text: "Throughout the centuries people have explained the rainbow in various ways." },
