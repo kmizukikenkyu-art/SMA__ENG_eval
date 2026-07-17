@@ -57,7 +57,7 @@ const SIMILARITY_OPTS = [
   { v: 1, en: "1: Not similar at all", ja: "全く似ていない" }
 ];
 
-const GOOGLE_FORM_URL = "https://forms.gle/tSxYir6YXfjAXoPu5";
+const GOOGLE_FORM_URL = "https://forms.gle/ERKmPbL2y2kLJArH9";
 
 /* Seed for the fixed display order. Change this number if you want a
    different (but still fixed) random order across all evaluators. */
