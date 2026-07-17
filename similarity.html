@@ -77,22 +77,41 @@
 <script src="samples.js"></script>
 <script>
 /* -------------------------------------------------------------------------
-   Build a FIXED set of cross-type matchups (no same-type pairs).
-   Default: each synthesized sample (s) is paired once with a recorded (d)
-   and once with a healthy (n) sample -> 20 matchups, balanced.
-   The SET is fixed (same for every evaluator, so results are comparable);
-   only the presentation order and the A/B side are randomized per load.
-   Edit this function if you want different pairings.
+   Build a FIXED, balanced set of matchups.
+     sd (synth vs recorded)  -> how close the synth got to the target
+     sn (synth vs healthy)   -> how far apart
+     dd (recorded vs recorded, different utterances) -> attention check
+                                (same target speaker, should sound very similar)
+     dn (recorded vs healthy) -> baseline / lower bound (different speakers)
+   Counts below. The SET is fixed (same for every evaluator, comparable);
+   only the presentation order and the A/B side are randomized (seeded).
    ------------------------------------------------------------------------- */
+const N_SD = 10; // synth x recorded
+const N_SN = 10; // synth x healthy
+
 function buildMatchups() {
   const s = SAMPLES.filter(x => x.type === "s");
   const d = SAMPLES.filter(x => x.type === "d");
   const n = SAMPLES.filter(x => x.type === "n");
   const pairs = [];
-  s.forEach((sv, i) => {
-    if (d.length) pairs.push([sv, d[i % d.length]]); // s vs d
-    if (n.length) pairs.push([sv, n[i % n.length]]); // s vs n
-  });
+
+  // sd: each recorded used evenly, synth spread round-robin
+  let si = 0;
+  for (let k = 0; k < N_SD && d.length; k++) {
+    pairs.push([s[si++ % s.length], d[k % d.length]]);
+  }
+  // sn: each healthy used evenly, synth spread round-robin (continues si)
+  for (let k = 0; k < N_SN && n.length; k++) {
+    pairs.push([s[si++ % s.length], n[k % n.length]]);
+  }
+  // dd: cycle over recorded -> each recorded appears twice, always a different partner
+  for (let k = 0; k < d.length; k++) {
+    pairs.push([d[k], d[(k + 1) % d.length]]);
+  }
+  // dn: perfect matching recorded[k] vs healthy[k]
+  for (let k = 0; k < Math.min(d.length, n.length); k++) {
+    pairs.push([d[k], n[k]]);
+  }
   return pairs;
 }
 
@@ -204,13 +223,14 @@ document.getElementById("downloadBtn").addEventListener("click", function () {
     if (!proceed) return;
   }
 
-  let csv = ["No", "A_type", "A_file", "B_type", "B_file", "similarity", "memo"].map(csvField).join(",") + "\n";
+  let csv = ["No", "pair", "A_type", "A_file", "B_type", "B_file", "similarity", "memo"].map(csvField).join(",") + "\n";
   for (let i = 1; i <= DISPLAY.length; i++) {
     const pair = DISPLAY[i - 1];
+    const combo = [pair.left.type, pair.right.type].sort().join(""); // e.g. ds, ns, dd, dn
     const sim = document.querySelector('input[name="similarity_no' + i + '"]:checked');
     const memo = document.getElementById("memo_no" + i).value;
     csv += [
-      "No." + i, pair.left.type, pair.left.file, pair.right.type, pair.right.file,
+      "No." + i, combo, pair.left.type, pair.left.file, pair.right.type, pair.right.file,
       sim ? sim.value : "NA", memo
     ].map(csvField).join(",") + "\n";
   }
