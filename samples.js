@@ -61,7 +61,7 @@ const SIMILARITY_OPTS = [
 ];
 
 // ▼▼▼ Google フォームのURLはここだけ変えれば全ページに反映されます ▼▼▼
-const GOOGLE_FORM_URL = "https://forms.gle/tSxYir6YXfjAXoPu5";
+const GOOGLE_FORM_URL = "https://forms.gle/grDXrqqAX4iiin557";
 // ▲▲▲ -------------------------------------------------------- ▲▲▲
 
 // Fill every <a class="js-form-link"> with the URL above.
